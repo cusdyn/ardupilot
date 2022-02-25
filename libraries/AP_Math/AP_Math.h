@@ -121,6 +121,10 @@ bool mat_inverse(const T *x, T *y, uint16_t dim) WARN_IF_UNUSED;
 template <typename T>
 void mat_identity(T *x, uint16_t dim);
 
+template<typename T>
+void mat_LU_decompose(const T* A, T* L, T* U, T *P, uint16_t n);
+
+
 /*
  * Constrain an angle to be within the range: -180 to 180 degrees. The second
  * parameter changes the units. Default: 1 == degrees, 10 == dezi,

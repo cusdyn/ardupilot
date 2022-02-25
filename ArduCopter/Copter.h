@@ -42,6 +42,7 @@
 #include <AP_Mission/AP_Mission.h>                              // Mission command library
 #include <AP_Mission/AP_Mission_ChangeDetector.h>               // Mission command change detection library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi.h>        // Attitude control library
+#include <AC_AttitudeControl/AC_AttitudeControl_Multi_LQ.h>     // Linear Quadratic Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi_6DoF.h>   // 6DoF Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Heli.h>         // Attitude control library for traditional helicopter
 #include <AC_AttitudeControl/AC_PosControl.h>                   // Position control library
@@ -76,6 +77,16 @@
 // Configuration
 #include "defines.h"
 #include "config.h"
+
+#if FRAME_CONFIG == HELI_FRAME
+    #define AC_AttitudeControl_t AC_AttitudeControl_Heli
+#else
+  #if ATTITUDE_CONTROL_OPTION == ATTITUDE_CONTROL_LQ
+    #define AC_AttitudeControl_t AC_AttitudeControl_Multi_LQ  
+  #else
+    #define AC_AttitudeControl_t AC_AttitudeControl_Multi
+  #endif
+#endif
 
 #if FRAME_CONFIG == HELI_FRAME
  #define MOTOR_CLASS AP_MotorsHeli

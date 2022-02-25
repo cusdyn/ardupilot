@@ -47,12 +47,25 @@
   #define AC_ATC_LQ_CMD_COUNT 4
 #endif
 
+#define AC_ATC_LQ_PHY_KV_DEFAULT                 880.0f    // Kv (RPM/volt)
+#define AC_ATC_LQ_PHY_MOT_R_DEFAULT              0.115f    // Motor internal resistance (ohms)
+#define AC_ATC_LQ_PHY_ESC_R_DEFAULT              0.01f     // ESC internal resistance (ohms)
+#define AC_ATC_LQ_PHY_PCONST_DEFAULT             1.13f     // prop power coefficient
+#define AC_ATC_LQ_PHY_TCONST_DEFAULT             1.0f      // prop torque coefficient
+#define AC_ATC_LQ_PHY_PROP_DIA_DEFAULT           0.245     // prop diameter (m)
+#define AC_ATC_LQ_PHY_PROP_MASS_DEFAULT          0.0125    // prop mass (kg)
+#define AC_ATC_LQ_PHY_AIR_DENSITY_DEFAULT        1.225     // (kg/m^3)
+#define AC_ATC_LQ_PHY_ARMLEN_DEFAULT             0.225     // Hexsoon 450mm frame (m)
+
 typedef struct {
         Vector3f gyro;
         Vector3f motor_rpy;
         Vector3f target_euler_rpy;
         Vector3f target_angle_rate_rpy;
+        float    u[4];
+        float    thrust;
 } data_to_send;
+
 
 class AC_AttitudeControl_Multi_LQ : public AC_AttitudeControl {
 public:
@@ -104,27 +117,50 @@ protected:
     // get maximum value throttle can be raised to based on throttle vs attitude prioritisation
     float get_throttle_avg_max(float throttle_in);
 
-    void InitializeFileConstants();
-
     AP_MotorsMulticopter& _motors_multi;
     AC_PID                _pid_rate_roll;
     AC_PID                _pid_rate_pitch;
     AC_PID                _pid_rate_yaw;
 
-  //  AC_LQ                 _lq;
-
-  //  AC_PID                _dummy_pid;
-
     AP_Float              _thr_mix_man;     // throttle vs attitude control prioritisation used when using manual throttle (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_min;     // throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_max;     // throttle vs attitude control prioritisation used during active flight (higher values mean we prioritise attitude control over throttle)
 
-    float              _k[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_STATE_COUNT];
+    AP_Float              _phy_kv;          // motor assumed velocity constant, RPM per Volt.
+    AP_Float              _phy_esc_r;       // esc resistance (ohms).
+    AP_Float              _phy_mot_r;       // motor internal resistance (ohms).
+    AP_Float              _phy_pconst;      // prop power coefficient (for drag).
+    AP_Float              _phy_tconst;      // prop thrust coefficient.
+    AP_Float              _phy_propdia;     // prop diameter (m).
+    AP_Float              _phy_propmass;    // prop mass (kg) used for prop inertia model.
+    AP_Float              _phy_rho;         // air density (kg/m^3). 
+    AP_Float              _phy_armlen;      // motor arm length (m). 
 
 private:
-
+    void CalcLQoutput();
+    void NormalizedThrustToActual( float normthrust );
+    void InitializeFileConstants();
     int  _dataStreamCounter;
     void InitializeLQ_K();
+    void InitializeLQ_W();
+    void InitializePhysicalConstantsLQ();
     void diag_data_out();
     SocketAPM sock{true};
+
+    float _k[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_STATE_COUNT];
+    float _W[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_CMD_COUNT];
+    float _u[AC_ATC_LQ_STATE_COUNT]; 
+
+    float _L[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_CMD_COUNT];
+    float _U[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_CMD_COUNT];
+    float _P[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_CMD_COUNT];
+
+    float _thrust_command_actual;
+
+    float _prop_inertia;
+    float _motor_kt;
+    float _last_nominal_rpm;
+    float _b;   // thrust factor
+    float _d;   // drag factor
+
 };
