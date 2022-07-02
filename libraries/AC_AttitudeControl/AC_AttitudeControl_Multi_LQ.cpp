@@ -436,10 +436,14 @@ void AC_AttitudeControl_Multi_LQ::rate_controller_run()
 
     CalcLQoutput();
 
-    diag_data_out();
+ //   diag_data_out();
 
 }
 
+
+// Apply Control law for body torques u = -Kx from state feedback x.
+// With roll, pitch, yaw body torques and body-axis aggregate thrust given from Z-controller
+// solve motor speeds (4 equations in 4 unknown speeds)
 void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
 {
     Quaternion q;
@@ -448,6 +452,10 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     VectorN<float, AC_ATC_LQ_CMD_COUNT> B; 
     VectorN<float, AC_ATC_LQ_CMD_COUNT> c; 
     VectorN<float, AC_ATC_LQ_CMD_COUNT> w; 
+    float cmd[AC_ATC_LQ_CMD_COUNT]; 
+    float nroll;
+//    float npitch;
+//    float nyaw;
 
     Vector3f gyro = _ahrs.get_gyro_latest();
 
@@ -470,9 +478,9 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     r[5] = 0;
 
     for( int i=0; i < AC_ATC_LQ_CMD_COUNT; i++){
-        _u[i]=0;
+        cmd[i]=0;
         for( int j=0; j < AC_ATC_LQ_STATE_COUNT; j++){
-            _u[i] += _k[i][j]*x[j]; 
+            cmd[i] += _k[i][j]*x[j]; 
         }        
     }
 
@@ -484,9 +492,9 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     // u1=3 and aggregate thrust T are used to solve for motor speed commands.
     // 'b' vector for Aw=b as b=[T u1 u2 u3]' where T
     B[0] = _thrust_command_actual;
-    B[1] = _u[0];
-    B[2] = _u[1];
-    B[3] = _u[2];
+    B[1] = cmd[0];
+    B[2] = cmd[1];
+    B[3] = cmd[2];
 
     // forward substitute
     c[0] = B[0];
@@ -499,6 +507,27 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     w[2] = 1/_U[2][2]*(c[2] - _U[2][3]*w[3]);
     w[1] = 1/_U[1][1]*(c[1] - _U[1][2]*w[2] - _U[1][3]*w[3]);
     w[0] = 1/_U[0][0]*(c[0] - _U[0][1]*w[1] - _U[0][2]*w[2] - _U[0][3]*w[3]);
+
+
+    // map to Ardu '+' frame quat motor layout as omegas...
+    _omega[0] = safe_sqrt(fabsf(w[3]));
+    _omega[1] = safe_sqrt(fabsf(w[1]));
+    _omega[2] = safe_sqrt(fabsf(w[0]));
+    _omega[3] = safe_sqrt(fabsf(w[2]));
+
+    nroll = (_omega[1] - _omega[0])/(_omega[1] + _omega[0]);
+//    npitch= (_omega[2] - _omega[3])/(_omega[2] + _omega[3]);
+//    nyaw  = (_omega[3] + _omega[2] - _omega[0] - _omega[1])/(_omega[0] + _omega[1] + _omega[2] + _omega[3]);
+
+    _motors.set_roll(-nroll);
+    _motors.set_roll_ff(0.0);
+
+//   _motors.set_pitch(-npitch);
+   _motors.set_pitch_ff(0.0);
+
+//   _motors.set_yaw(-nyaw);
+   _motors.set_yaw_ff(0.0);
+
 
 }
 
@@ -598,6 +627,9 @@ void AC_AttitudeControl_Multi_LQ::NormalizedThrustToActual( float normthrust )
     _last_nominal_rpm = rps*60;
 }
 
+
+// This is the A matrix for Ax=b solver for desired motor speeds x given
+// thrust and cross-body torques in b.
 void AC_AttitudeControl_Multi_LQ::InitializeLQ_W()
 {
     _b = _phy_tconst*_phy_rho*powf(_phy_propdia,4)/(4*powf(M_PI,2));
@@ -623,6 +655,7 @@ void AC_AttitudeControl_Multi_LQ::InitializeLQ_W()
     _W[3][2] = -_b*_phy_armlen;
     _W[3][3] = 0;
 
+    // LU decompose it for run-time solver
     mat_LU_decompose((const float*)&_W[0][0],&_L[0][0],&_U[0][0],&_P[0][0],AC_ATC_LQ_CMD_COUNT);
 }
 

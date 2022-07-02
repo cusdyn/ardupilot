@@ -163,4 +163,6 @@ private:
     float _b;   // thrust factor
     float _d;   // drag factor
 
+    float _omega[AC_ATC_LQ_CMD_COUNT];
+
 };
