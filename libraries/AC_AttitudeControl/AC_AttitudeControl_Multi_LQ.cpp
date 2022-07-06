@@ -454,8 +454,11 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     VectorN<float, AC_ATC_LQ_CMD_COUNT> w; 
     float cmd[AC_ATC_LQ_CMD_COUNT]; 
     float nroll;
-//    float npitch;
-//    float nyaw;
+    float npitch;
+    float nyaw;
+    float Tmax;
+    float Ymax;
+    float wms;
 
     Vector3f gyro = _ahrs.get_gyro_latest();
 
@@ -470,17 +473,17 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     x[5] = gyro.z;
 
     // reference inputs are desired angles and zero rates
-    r[0] = _euler_angle_target.x;
+    r[0] = _euler_angle_target.x/10;//_attitude_target.get_euler_roll()/10;
     r[1] = 0;
-    r[2] = _euler_angle_target.y;
+    r[2] = _euler_angle_target.y/10;//_attitude_target.get_euler_pitch()/10;
     r[3] = 0;
-    r[4] = _euler_angle_target.z;
+    r[4] = _euler_angle_target.z;//_attitude_target.get_euler_yaw();
     r[5] = 0;
 
     for( int i=0; i < AC_ATC_LQ_CMD_COUNT; i++){
         cmd[i]=0;
         for( int j=0; j < AC_ATC_LQ_STATE_COUNT; j++){
-            cmd[i] += _k[i][j]*x[j]; 
+            cmd[i] += -_k[i][j]*x[j] + _Nb[i][j]*r[j]; 
         }        
     }
 
@@ -515,17 +518,23 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     _omega[2] = safe_sqrt(fabsf(w[0]));
     _omega[3] = safe_sqrt(fabsf(w[2]));
 
-    nroll = (_omega[1] - _omega[0])/(_omega[1] + _omega[0]);
-//    npitch= (_omega[2] - _omega[3])/(_omega[2] + _omega[3]);
-//    nyaw  = (_omega[3] + _omega[2] - _omega[0] - _omega[1])/(_omega[0] + _omega[1] + _omega[2] + _omega[3]);
+    _wmax = _phy_kv*AP::sitl()->batt_voltage*M_2PI/60;
 
-    _motors.set_roll(-nroll);
+    wms = _wmax*_wmax;
+    Tmax = _b*_phy_armlen*wms;
+    Ymax = _d*2*wms;
+
+    nroll  = cmd[0]/Tmax;
+    npitch = cmd[1]/Tmax;
+    nyaw   = cmd[2]/Ymax;
+
+    _motors.set_roll(nroll);
     _motors.set_roll_ff(0.0);
 
-//   _motors.set_pitch(-npitch);
+    _motors.set_pitch(npitch);
    _motors.set_pitch_ff(0.0);
 
-//   _motors.set_yaw(-nyaw);
+   _motors.set_yaw(nyaw);
    _motors.set_yaw_ff(0.0);
 
 
@@ -585,6 +594,7 @@ void AC_AttitudeControl_Multi_LQ::diag_data_out( )
 void AC_AttitudeControl_Multi_LQ::InitializeFileConstants()
 {
     InitializeLQ_K();
+    InitializeLQ_Nb();
     InitializeLQ_W();
 }
 
@@ -625,6 +635,9 @@ void AC_AttitudeControl_Multi_LQ::NormalizedThrustToActual( float normthrust )
     _thrust_command_actual = 4*thrust; // quad so we return aggregate desired thrust in Newtons
 
     _last_nominal_rpm = rps*60;
+
+
+
 }
 
 
@@ -694,3 +707,37 @@ void AC_AttitudeControl_Multi_LQ::InitializeLQ_K()
     }
 }
 
+void AC_AttitudeControl_Multi_LQ::InitializeLQ_Nb()
+{
+    char filebuf[600];
+    int row=0;
+
+    int fd;
+    
+    fd = AP::FS().open("LQ/Nb.txt", O_RDWR|O_CREAT);
+    if (fd == -1) 
+    {
+        LQ_SEND_TEXT(MAV_SEVERITY_INFO, "Open LQ Nb Gain File failed.");
+    }
+    else
+    {
+        LQ_SEND_TEXT(MAV_SEVERITY_INFO, "Successfully Opened  controller feedforward Gain File");
+        int cnt = AP::FS().read(fd, filebuf, 600);
+        LQ_SEND_TEXT(MAV_SEVERITY_INFO, "Read %u bytes", cnt);
+        filebuf[cnt] = 0; // null the end of the string
+
+        std::string str(filebuf,cnt);
+        std::istringstream ss(str);
+        std::string line;
+
+        row = 0;
+        while (std::getline(ss,line) && row < AC_ATC_LQ_CMD_COUNT) {
+            // process line
+            sscanf(line.c_str(),"%f,%f,%f,%f,%f,%f", 
+                                 &_Nb[row][0], &_Nb[row][1], &_Nb[row][2],
+                                 &_Nb[row][3], &_Nb[row][4], &_Nb[row][5]);
+            row++;
+            LQ_SEND_TEXT(MAV_SEVERITY_INFO, "Line: %s", (char *)line.c_str());
+        }
+    }
+}

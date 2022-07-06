@@ -142,12 +142,14 @@ private:
     void InitializeFileConstants();
     int  _dataStreamCounter;
     void InitializeLQ_K();
+    void InitializeLQ_Nb();
     void InitializeLQ_W();
     void InitializePhysicalConstantsLQ();
     void diag_data_out();
     SocketAPM sock{true};
 
     float _k[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_STATE_COUNT];
+    float _Nb[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_STATE_COUNT];
     float _W[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_CMD_COUNT];
     float _u[AC_ATC_LQ_STATE_COUNT]; 
 
@@ -164,5 +166,7 @@ private:
     float _d;   // drag factor
 
     float _omega[AC_ATC_LQ_CMD_COUNT];
+
+    float _wmax;
 
 };
