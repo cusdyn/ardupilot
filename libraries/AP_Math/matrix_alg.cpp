@@ -149,7 +149,7 @@ static void mat_back_sub(const T *U, T *out, uint16_t n)
  *    @param     n,           dimension of matrix
  */
 template<typename T>
-static void mat_LU_decompose(const T* A, T* L, T* U, T *P, uint16_t n)
+void mat_LU_decompose(const T* A, T* L, T* U, T *P, uint16_t n)
 {
     memset(L,0,n*n*sizeof(T));
     memset(U,0,n*n*sizeof(T));

@@ -50,6 +50,10 @@
  # define FRAME_CONFIG   MULTICOPTER_FRAME
 #endif
 
+#ifndef ATTITUDE_CONTROL_OPTION
+ # define ATTITUDE_CONTROL_OPTION ATTITUDE_CONTROL_LQ
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////
 // TradHeli defaults
 #if FRAME_CONFIG == HELI_FRAME

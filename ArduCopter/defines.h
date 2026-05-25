@@ -28,6 +28,10 @@ enum autopilot_yaw_mode {
 #define MULTICOPTER_FRAME 1
 #define HELI_FRAME 2
 
+// Attitude conttoller options
+#define ATTITUDE_CONTROL_PID 0
+#define ATTITUDE_CONTROL_LQ  1
+
 // Tuning enumeration
 enum tuning_func {
     TUNING_NONE =                        0, //

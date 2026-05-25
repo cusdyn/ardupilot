@@ -41,6 +41,7 @@
 #include <AP_AHRS/AP_AHRS.h>                                    // AHRS (Attitude Heading Reference System) interface library for ArduPilot
 #include <AP_Mission/AP_Mission.h>                              // Mission command library
 #include <AP_Mission/AP_Mission_ChangeDetector.h>               // Mission command change detection library
+#include <AC_AttitudeControl/AC_AttitudeControl_Multi_LQ.h>     // Attitude control library: Linear Quadratic Regulator (LQR).
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi.h>        // Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi_6DoF.h>   // 6DoF Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Heli.h>         // Attitude control library for traditional helicopter
@@ -77,7 +78,11 @@
 #if FRAME_CONFIG == HELI_FRAME
     #define AC_AttitudeControl_t AC_AttitudeControl_Heli
 #else
+  #if ATTITUDE_CONTROL_OPTION == ATTITUDE_CONTROL_LQ
+    #define AC_AttitudeControl_t AC_AttitudeControl_Multi_LQ  
+  #else
     #define AC_AttitudeControl_t AC_AttitudeControl_Multi
+  #endif
 #endif
 
 #if FRAME_CONFIG == HELI_FRAME

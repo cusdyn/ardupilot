@@ -511,7 +511,11 @@ const AP_Param::Info Copter::var_info[] = {
 #if FRAME_CONFIG == HELI_FRAME
     GOBJECTPTR(attitude_control, "ATC_", AC_AttitudeControl_Heli),
 #else
+  #if ATTITUDE_CONTROL_OPTION == ATTITUDE_CONTROL_LQ
+    GOBJECTPTR(attitude_control, "ATC_", AC_AttitudeControl_Multi_LQ),  
+  #else
     GOBJECTPTR(attitude_control, "ATC_", AC_AttitudeControl_Multi),
+  #endif  
 #endif
 
     // @Group: PSC
