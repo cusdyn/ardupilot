@@ -49,6 +49,7 @@ private:
         uint16_t frame_rate;
         uint32_t frame_count;
         uint16_t pwm[16];
+        float altitude_m;
     };
 
     // default connection_info_.ip_address

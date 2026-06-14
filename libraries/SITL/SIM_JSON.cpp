@@ -107,6 +107,8 @@ void JSON::output_servos(const struct sitl_input &input)
         pkt.pwm[i] = input.servos[i];
     }
 
+    pkt.altitude_m = -position.z;
+
     size_t send_ret = sock.sendto(&pkt, sizeof(pkt), target_ip, control_port);
     if (send_ret != sizeof(pkt)) {
         if (send_ret <= 0) {

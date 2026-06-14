@@ -416,6 +416,9 @@ void AC_AttitudeControl_Multi_LQ::rate_controller_run()
     // move throttle vs attitude mixing towards desired (called from here because this is conveniently called on every iteration)
     update_throttle_rpy_mix();
 
+    // Ensure euler angle targets are synchronized with attitude target quaternion for CalcLQoutput
+    _attitude_target.to_euler(_euler_angle_target.x, _euler_angle_target.y, _euler_angle_target.z);
+
     _ang_vel_body += _sysid_ang_vel_body;
 
     Vector3f gyro_latest = _ahrs.get_gyro_latest();
@@ -436,7 +439,7 @@ void AC_AttitudeControl_Multi_LQ::rate_controller_run()
 
     CalcLQoutput();
 
- //   diag_data_out();
+    //diag_data_out();
 
 }
 
@@ -473,11 +476,11 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     x[5] = gyro.z;
 
     // reference inputs are desired angles and zero rates
-    r[0] = _euler_angle_target.x/10;//_attitude_target.get_euler_roll()/10;
+    r[0] = _attitude_target.get_euler_roll();
     r[1] = 0;
-    r[2] = _euler_angle_target.y/10;//_attitude_target.get_euler_pitch()/10;
+    r[2] = _attitude_target.get_euler_pitch();
     r[3] = 0;
-    r[4] = _euler_angle_target.z;//_attitude_target.get_euler_yaw();
+    r[4] = _attitude_target.get_euler_yaw();
     r[5] = 0;
 
     for( int i=0; i < AC_ATC_LQ_CMD_COUNT; i++){
@@ -524,9 +527,9 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     Tmax = _b*_phy_armlen*wms;
     Ymax = _d*2*wms;
 
-    nroll  = cmd[0]/Tmax;
-    npitch = cmd[1]/Tmax;
-    nyaw   = cmd[2]/Ymax;
+    nroll  = MIN(MAX(cmd[0]/Tmax, -1.0f), 1.0f);
+    npitch = MIN(MAX(cmd[1]/Tmax, -1.0f), 1.0f);
+    nyaw   = MIN(MAX(cmd[2]/Ymax, -1.0f), 1.0f);
 
     _motors.set_roll(nroll);
     _motors.set_roll_ff(0.0);
@@ -570,7 +573,7 @@ void AC_AttitudeControl_Multi_LQ::parameter_sanity_check()
 
 void AC_AttitudeControl_Multi_LQ::diag_data_out( )
 {
-/*
+
     Vector3f gyro_latest = _ahrs.get_gyro_latest();
 
    Quaternion q;
@@ -588,9 +591,9 @@ void AC_AttitudeControl_Multi_LQ::diag_data_out( )
        dts.target_angle_rate_rpy = _ang_vel_body;
        memcpy(dts.u,_u,sizeof(_u));
        dts.thrust = _thrust_command_actual;
-       sock.sendto(&dts, sizeof(dts), "192.168.0.231", 9003);    
+ //      sock.sendto(&dts, sizeof(dts), "10.1.1.10", 9003);    
    }
-*/       
+     
 }
 
 void AC_AttitudeControl_Multi_LQ::InitializeFileConstants()
@@ -742,4 +745,17 @@ void AC_AttitudeControl_Multi_LQ::InitializeLQ_Nb()
             LQ_SEND_TEXT(MAV_SEVERITY_INFO, "Line: %s", (char *)line.c_str());
         }
     }
+}
+
+
+void AC_AttitudeControl_Multi_LQ::input_thrust_vector_rate_heading(const Vector3f& thrust_vector, float heading_rate_cds, bool slew_yaw)
+{
+    // Call base class implementation to set up attitude targets
+    AC_AttitudeControl::input_thrust_vector_rate_heading(thrust_vector, heading_rate_cds, slew_yaw);
+}
+
+void AC_AttitudeControl_Multi_LQ::input_thrust_vector_heading(const Vector3f& thrust_vector, float heading_angle_cd, float heading_rate_cds)
+{
+    // Call base class implementation to set up attitude targets
+    AC_AttitudeControl::input_thrust_vector_heading(thrust_vector, heading_angle_cd, heading_rate_cds);
 }

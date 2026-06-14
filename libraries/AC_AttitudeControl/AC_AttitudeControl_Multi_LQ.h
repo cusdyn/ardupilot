@@ -62,7 +62,7 @@ typedef struct {
         Vector3f motor_rpy;
         Vector3f target_euler_rpy;
         Vector3f target_angle_rate_rpy;
-        float    u[4];
+        float    u[AC_ATC_LQ_STATE_COUNT];
         float    thrust;
 } data_to_send;
 
@@ -106,6 +106,9 @@ public:
     // sanity check parameters.  should be called once before take-off
     void parameter_sanity_check() override;
 
+    void input_thrust_vector_rate_heading(const Vector3f& thrust_vector, float heading_rate_cds, bool slew_yaw = true) override;
+    void input_thrust_vector_heading(const Vector3f& thrust_vector, float heading_angle_cd, float heading_rate_cds = 0.0f) override;
+
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -147,6 +150,12 @@ private:
     void InitializePhysicalConstantsLQ();
     void diag_data_out();
     SocketAPM sock{true};
+
+    // Nested structure for LQ gain matrix parameters
+    struct {
+        AP_Float k[AC_ATC_LQ_CMD_COUNT * AC_ATC_LQ_STATE_COUNT];    // 24 K gain parameters
+        AP_Float Nb[AC_ATC_LQ_CMD_COUNT * AC_ATC_LQ_STATE_COUNT];   // 24 Nb gain parameters
+    } _lq_gains;
 
     float _k[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_STATE_COUNT];
     float _Nb[AC_ATC_LQ_CMD_COUNT][AC_ATC_LQ_STATE_COUNT];
