@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <AP_Filesystem/AP_Filesystem.h>
+#include <AP_BattMonitor/AP_BattMonitor.h>
 
 #define LQ_SEND_TEXT(severity, format, args...) gcs().send_text(severity, format, ##args)
 
@@ -303,6 +304,13 @@ const AP_Param::GroupInfo AC_AttitudeControl_Multi_LQ::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("PHY_ARMLEN", 15, AC_AttitudeControl_Multi_LQ, _phy_armlen, AC_ATC_LQ_PHY_ARMLEN_DEFAULT ),
 
+    // @Param: PHY_NOMV
+    // @DisplayName: Nominal battery voltage
+    // @Description: Nominal battery voltage used as fallback for wmax calculation when battery monitor is unavailable.
+    // @Units: V
+    // @Range: 6.0 60.0
+    // @User: Advanced
+    AP_GROUPINFO("PHY_NOMV", 16, AC_AttitudeControl_Multi_LQ, _phy_nominal_voltage, AC_ATC_LQ_PHY_NOMV_DEFAULT ),
 
     AP_GROUPEND
 };
@@ -521,7 +529,12 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     _omega[2] = safe_sqrt(fabsf(w[0]));
     _omega[3] = safe_sqrt(fabsf(w[2]));
 
-    _wmax = _phy_kv*AP::sitl()->batt_voltage*M_2PI/60;
+    // get battery voltage for motor speed scaling
+    float vbat = AP::battery().voltage(0);
+    if (!is_positive(vbat)) {
+        vbat = _phy_nominal_voltage;
+    }
+    _wmax = _phy_kv * vbat * M_2PI / 60;
 
     wms = _wmax*_wmax;
     Tmax = _b*_phy_armlen*wms;
