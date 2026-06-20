@@ -475,7 +475,7 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
 
     _ahrs.get_quat_body_to_ned(q);
 
-    // state feedback is angles and rates
+    // state feedback: body angles (in radians ) and rates.
     x[0] = q.get_euler_roll();
     x[1] = gyro.x;
     x[2] = q.get_euler_pitch();
@@ -483,6 +483,7 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
     x[4] = q.get_euler_yaw();
     x[5] = gyro.z;
 
+    
     // reference inputs are desired angles and zero rates
     r[0] = _attitude_target.get_euler_roll();
     r[1] = 0;
@@ -497,6 +498,8 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
             cmd[i] += -_k[i][j]*x[j] + _Nb[i][j]*r[j]; 
         }        
     }
+
+    // These are body angle commands.
 
     // u1 = roll torgue
     // u2 = pitch torque
@@ -524,10 +527,10 @@ void AC_AttitudeControl_Multi_LQ::CalcLQoutput()
 
 
     // map to Ardu '+' frame quat motor layout as omegas...
-    _omega[0] = safe_sqrt(fabsf(w[3]));
+    _omega[0] = safe_sqrt(fabsf(w[0]));
     _omega[1] = safe_sqrt(fabsf(w[1]));
-    _omega[2] = safe_sqrt(fabsf(w[0]));
-    _omega[3] = safe_sqrt(fabsf(w[2]));
+    _omega[2] = safe_sqrt(fabsf(w[2]));
+    _omega[3] = safe_sqrt(fabsf(w[3]));
 
     // get battery voltage for motor speed scaling
     float vbat = AP::battery().voltage(0);
@@ -663,28 +666,33 @@ void AC_AttitudeControl_Multi_LQ::NormalizedThrustToActual( float normthrust )
 // thrust and cross-body torques in b.
 void AC_AttitudeControl_Multi_LQ::InitializeLQ_W()
 {
+    // Thrust coefficient 'b' 
     _b = _phy_tconst*_phy_rho*powf(_phy_propdia,4)/(4*powf(M_PI,2));
+    
+    // drag torque coefficient 'd'
     _d = _phy_pconst*_phy_rho*powf(_phy_propdia,5)/(8*powf(M_PI,3));
 
+    // MIKE TO DO: for the X frame you need to change 
+    // total body up axis thrust is first row
     _W[0][0] = _b;
     _W[0][1] = _b;
     _W[0][2] = _b;
     _W[0][3] = _b;
 
-    _W[1][0] = 0;
+    _W[1][0] = -_b*_phy_armlen;
     _W[1][1] = _b*_phy_armlen;
     _W[1][2] = 0;
-    _W[1][3] = -_b*_phy_armlen;
+    _W[1][3] = 0;
 
-    _W[2][0] = -_d;
-    _W[2][1] = _d;
-    _W[2][2] = -_d;
-    _W[2][3] = _d;
+    _W[2][0] = 0;
+    _W[2][1] = 0;
+    _W[2][2] = -_b*_phy_armlen;
+    _W[2][3] = _b*_phy_armlen;;
 
-    _W[3][0] = _b*_phy_armlen;
-    _W[3][1] = 0;
-    _W[3][2] = -_b*_phy_armlen;
-    _W[3][3] = 0;
+    _W[3][0] = _d;
+    _W[3][1] = _d;
+    _W[3][2] = -_d;
+    _W[3][3] = -_d;
 
     // LU decompose it for run-time solver
     mat_LU_decompose((const float*)&_W[0][0],&_L[0][0],&_U[0][0],&_P[0][0],AC_ATC_LQ_CMD_COUNT);

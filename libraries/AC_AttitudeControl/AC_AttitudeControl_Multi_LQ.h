@@ -56,6 +56,7 @@
 #define AC_ATC_LQ_PHY_PROP_MASS_DEFAULT          0.0125    // prop mass (kg)
 #define AC_ATC_LQ_PHY_AIR_DENSITY_DEFAULT        1.225     // (kg/m^3)
 #define AC_ATC_LQ_PHY_ARMLEN_DEFAULT             0.225     // Hexsoon 450mm frame (m)
+#define AC_ATC_LQ_PHY_NOMV_DEFAULT               12.6f     // nominal battery voltage (V), 3S LiPo
 
 typedef struct {
         Vector3f gyro;
@@ -137,7 +138,8 @@ protected:
     AP_Float              _phy_propdia;     // prop diameter (m).
     AP_Float              _phy_propmass;    // prop mass (kg) used for prop inertia model.
     AP_Float              _phy_rho;         // air density (kg/m^3). 
-    AP_Float              _phy_armlen;      // motor arm length (m). 
+    AP_Float              _phy_armlen;      // motor arm length (m).
+    AP_Float              _phy_nominal_voltage; // nominal battery voltage (V).
 
 private:
     void CalcLQoutput();
